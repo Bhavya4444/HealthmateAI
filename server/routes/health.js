@@ -15,8 +15,17 @@ router.post('/log', auth, async (req, res) => {
       mood,
       energy,
       weight,
+      bodyComposition,
+      bloodPressure,
       notes
     } = req.body;
+
+    console.log('📊 Received health log data:', {
+      bodyComposition,
+      bloodPressure,
+      hasBodyComposition: !!bodyComposition,
+      hasBloodPressure: !!bloodPressure
+    });
 
     const today = new Date().toDateString();
 
@@ -56,6 +65,27 @@ router.post('/log', auth, async (req, res) => {
     if (mood !== undefined) log.mood = mood;
     if (energy !== undefined) log.energy = energy;
     if (weight !== undefined) log.weight = weight;
+    if (bodyComposition) {
+      console.log('💪 Received bodyComposition data:', bodyComposition);
+      // Ensure we preserve existing fields but update with new values
+      if (!log.bodyComposition) log.bodyComposition = {};
+      if (bodyComposition.bodyFatPercentage !== undefined) log.bodyComposition.bodyFatPercentage = typeof bodyComposition.bodyFatPercentage === 'number' ? bodyComposition.bodyFatPercentage : parseFloat(bodyComposition.bodyFatPercentage) || undefined;
+      if (bodyComposition.muscleMass !== undefined) log.bodyComposition.muscleMass = typeof bodyComposition.muscleMass === 'number' ? bodyComposition.muscleMass : parseFloat(bodyComposition.muscleMass) || undefined;
+      if (bodyComposition.boneDensity !== undefined) log.bodyComposition.boneDensity = typeof bodyComposition.boneDensity === 'number' ? bodyComposition.boneDensity : parseFloat(bodyComposition.boneDensity) || undefined;
+      // Preserve calculated fields
+      if (bodyComposition.bmi) log.bodyComposition.bmi = bodyComposition.bmi;
+      if (bodyComposition.fitnessLevel) log.bodyComposition.fitnessLevel = bodyComposition.fitnessLevel;
+      if (bodyComposition.notes) log.bodyComposition.notes = bodyComposition.notes;
+      log.bodyComposition.measurementTime = new Date();
+      log.markModified('bodyComposition');
+      console.log('💪 Updated log.bodyComposition:', log.bodyComposition);
+    }
+    if (bloodPressure) {
+      console.log('🩺 Received bloodPressure data:', bloodPressure);
+      log.bloodPressure = { ...log.bloodPressure, ...bloodPressure };
+      log.markModified('bloodPressure');
+      console.log('🩺 Updated log.bloodPressure:', log.bloodPressure);
+    }
     if (notes !== undefined) log.notes = notes;
 
     // Ensure proper structure before saving
@@ -165,11 +195,27 @@ router.get('/analytics', auth, async (req, res) => {
       caloriesTrend: [],
       energyTrend: [],
       moodDistribution: {},
-      totalWorkouts: 0
+      totalWorkouts: 0,
+      // Added body composition analytics
+      bodyFatTrend: [],
+      muscleMassTrend: [],
+      boneDensityTrend: [],
+      averageBodyFat: 0,
+      averageMuscleMass: 0,
+      averageBoneDensity: 0,
+      fitnessLevelCounts: {},
+      bloodPressureSystolicTrend: [],
+      bloodPressureDiastolicTrend: [],
+      averageSystolicBP: 0,
+      averageDiastolicBP: 0,
+      bpCategoryCounts: {}
     };
 
     if (logs.length > 0) {
       let totalSteps = 0, totalSleep = 0, totalCalories = 0, totalEnergy = 0;
+      let totalBodyFat = 0, bodyFatCount = 0, totalMuscleMass = 0, muscleMassCount = 0;
+      let totalBoneDensity = 0, boneDensityCount = 0;
+      let totalSystolic = 0, systolicCount = 0, totalDiastolic = 0, diastolicCount = 0;
 
       logs.forEach(log => {
         totalSteps += log.steps?.count || 0;
@@ -202,12 +248,48 @@ router.get('/analytics', auth, async (req, res) => {
         }
 
         analytics.totalWorkouts += log.exercise?.length || 0;
+
+        if (log.bodyComposition) {
+          if (typeof log.bodyComposition.bodyFatPercentage === 'number') {
+            analytics.bodyFatTrend.push({ date: log.date, value: log.bodyComposition.bodyFatPercentage });
+            totalBodyFat += log.bodyComposition.bodyFatPercentage; bodyFatCount++;
+          }
+          if (typeof log.bodyComposition.muscleMass === 'number') {
+            analytics.muscleMassTrend.push({ date: log.date, value: log.bodyComposition.muscleMass });
+            totalMuscleMass += log.bodyComposition.muscleMass; muscleMassCount++;
+          }
+          if (typeof log.bodyComposition.boneDensity === 'number') {
+            analytics.boneDensityTrend.push({ date: log.date, value: log.bodyComposition.boneDensity });
+            totalBoneDensity += log.bodyComposition.boneDensity; boneDensityCount++;
+          }
+          if (log.bodyComposition.fitnessLevel) {
+            analytics.fitnessLevelCounts[log.bodyComposition.fitnessLevel] = (analytics.fitnessLevelCounts[log.bodyComposition.fitnessLevel] || 0) + 1;
+          }
+        }
+        if (log.bloodPressure) {
+          if (typeof log.bloodPressure.systolic === 'number') {
+            analytics.bloodPressureSystolicTrend.push({ date: log.date, value: log.bloodPressure.systolic });
+            totalSystolic += log.bloodPressure.systolic; systolicCount++;
+          }
+          if (typeof log.bloodPressure.diastolic === 'number') {
+            analytics.bloodPressureDiastolicTrend.push({ date: log.date, value: log.bloodPressure.diastolic });
+            totalDiastolic += log.bloodPressure.diastolic; diastolicCount++;
+          }
+          if (log.bloodPressure.category) {
+            analytics.bpCategoryCounts[log.bloodPressure.category] = (analytics.bpCategoryCounts[log.bloodPressure.category] || 0) + 1;
+          }
+        }
       });
 
       analytics.averageSteps = Math.round(totalSteps / logs.length);
       analytics.averageSleep = Math.round((totalSleep / logs.length) * 10) / 10;
       analytics.averageCalories = Math.round(totalCalories / logs.length);
       analytics.averageEnergy = Math.round((totalEnergy / logs.length) * 10) / 10;
+      analytics.averageBodyFat = bodyFatCount ? Math.round((totalBodyFat / bodyFatCount) * 10) / 10 : 0;
+      analytics.averageMuscleMass = muscleMassCount ? Math.round((totalMuscleMass / muscleMassCount) * 10) / 10 : 0;
+      analytics.averageBoneDensity = boneDensityCount ? Math.round((totalBoneDensity / boneDensityCount) * 100) / 100 : 0;
+      analytics.averageSystolicBP = systolicCount ? Math.round(totalSystolic / systolicCount) : 0;
+      analytics.averageDiastolicBP = diastolicCount ? Math.round(totalDiastolic / diastolicCount) : 0;
     }
 
     res.json(analytics);

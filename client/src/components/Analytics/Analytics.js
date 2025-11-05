@@ -110,6 +110,57 @@ const Analytics = () => {
     ],
   };
 
+  const bodyCompositionChartData = {
+    labels: analytics?.bodyFatTrend?.map(item =>
+      new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    ) || [],
+    datasets: [
+      {
+        label: 'Body Fat %',
+        data: analytics?.bodyFatTrend?.map(item => item.value) || [],
+        backgroundColor: 'rgba(147, 51, 234, 0.8)',
+        borderColor: 'rgb(147, 51, 234)',
+        borderWidth: 1,
+      },
+      {
+        label: 'Muscle Mass (kg)',
+        data: analytics?.muscleMassTrend?.map(item => item.value) || [],
+        backgroundColor: 'rgba(34, 197, 94, 0.8)',
+        borderColor: 'rgb(34, 197, 94)',
+        borderWidth: 1,
+      },
+      {
+        label: 'Bone Density',
+        data: analytics?.boneDensityTrend?.map(item => item.value) || [],
+        backgroundColor: 'rgba(251, 191, 36, 0.8)',
+        borderColor: 'rgb(251, 191, 36)',
+        borderWidth: 1,
+      }
+    ]
+  };
+
+  const bloodPressureChartData = {
+    labels: analytics?.bloodPressureSystolicTrend?.map(item =>
+      new Date(item.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    ) || [],
+    datasets: [
+      {
+        label: 'Systolic',
+        data: analytics?.bloodPressureSystolicTrend?.map(item => item.value) || [],
+        backgroundColor: 'rgba(59, 130, 246, 0.8)',
+        borderColor: 'rgb(59, 130, 246)',
+        borderWidth: 1,
+      },
+      {
+        label: 'Diastolic',
+        data: analytics?.bloodPressureDiastolicTrend?.map(item => item.value) || [],
+        backgroundColor: 'rgba(147, 51, 234, 0.8)',
+        borderColor: 'rgb(147, 51, 234)',
+        borderWidth: 1,
+      }
+    ]
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -206,6 +257,46 @@ const Analytics = () => {
                 <div className="text-center">
                   <ChartBarIcon className="h-12 w-12 mx-auto mb-2 text-gray-300" />
                   <p>No mood data available</p>
+                </div>
+              </div>
+            )}
+          </motion.div>
+
+          {/* Body Composition Chart */}
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.6 }}
+            className="bg-white rounded-xl shadow-sm p-6"
+          >
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Body Composition Trends</h3>
+            {bodyCompositionChartData.labels.length > 0 ? (
+              <Bar data={bodyCompositionChartData} options={chartOptions} />
+            ) : (
+              <div className="flex items-center justify-center h-64 text-gray-500">
+                <div className="text-center">
+                  <ChartBarIcon className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+                  <p>No body composition data available</p>
+                </div>
+              </div>
+            )}
+          </motion.div>
+
+          {/* Blood Pressure Chart */}
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.7 }}
+            className="bg-white rounded-xl shadow-sm p-6"
+          >
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Blood Pressure Trends</h3>
+            {bloodPressureChartData.labels.length > 0 ? (
+              <Bar data={bloodPressureChartData} options={chartOptions} />
+            ) : (
+              <div className="flex items-center justify-center h-64 text-gray-500">
+                <div className="text-center">
+                  <ChartBarIcon className="h-12 w-12 mx-auto mb-2 text-gray-300" />
+                  <p>No blood pressure data available</p>
                 </div>
               </div>
             )}

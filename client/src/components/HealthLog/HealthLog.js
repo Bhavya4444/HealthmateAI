@@ -23,6 +23,20 @@ const HealthLog = () => {
     mood: '',
     energy: 5,
     weight: '',
+    bodyComposition: {
+      bodyFatPercentage: '',
+      muscleMass: '',
+      boneDensity: '',
+      bmi: '',
+      fitnessLevel: 'average',
+      notes: ''
+    },
+    bloodPressure: {
+      systolic: '',
+      diastolic: '',
+      pulse: '',
+      notes: ''
+    },
     notes: ''
   });
 
@@ -49,6 +63,8 @@ const HealthLog = () => {
         mood: todayLog.mood || prev.mood,
         energy: todayLog.energy !== undefined ? todayLog.energy : prev.energy,
         weight: todayLog.weight || prev.weight,
+        bodyComposition: todayLog.bodyComposition || prev.bodyComposition,
+        bloodPressure: todayLog.bloodPressure || prev.bloodPressure,
         notes: todayLog.notes || prev.notes
       }));
     }
@@ -81,8 +97,11 @@ const HealthLog = () => {
         mood: formData.mood,
         energy: formData.energy,
         weight: formData.weight,
+        bodyComposition: formData.bodyComposition,
+        bloodPressure: formData.bloodPressure,
         notes: formData.notes
       };
+      console.log('Saving data:', saveData); // Debug log
       const result = await updateHealthLog(saveData);
       if (result.success) {
         await getTodayLog();
@@ -109,6 +128,8 @@ const HealthLog = () => {
         mood: formData.mood,
         energy: formData.energy,
         weight: formData.weight,
+        heartRate: formData.heartRate,
+        bloodPressure: formData.bloodPressure,
         notes: formData.notes
       };
 
@@ -151,6 +172,9 @@ const HealthLog = () => {
       if (formData.mood) saveData.mood = formData.mood;
       if (formData.energy !== 5) saveData.energy = formData.energy;
       if (formData.weight) saveData.weight = formData.weight;
+      console.log('💪 Body composition check:', { bodyFat: formData.bodyComposition?.bodyFatPercentage, muscleMass: formData.bodyComposition?.muscleMass, boneDensity: formData.bodyComposition?.boneDensity });
+      if (formData.bodyComposition && ((formData.bodyComposition.bodyFatPercentage && !isNaN(formData.bodyComposition.bodyFatPercentage)) || (formData.bodyComposition.muscleMass && !isNaN(formData.bodyComposition.muscleMass)) || (formData.bodyComposition.boneDensity && !isNaN(formData.bodyComposition.boneDensity)))) saveData.bodyComposition = formData.bodyComposition;
+      if (typeof formData.bloodPressure.systolic === 'number' || typeof formData.bloodPressure.diastolic === 'number') saveData.bloodPressure = formData.bloodPressure;
       if (formData.notes) saveData.notes = formData.notes;
       if (Object.keys(saveData).length > 0) {
         await updateHealthLog(saveData);
@@ -169,13 +193,18 @@ const HealthLog = () => {
           formData.energy !== 5 ||
           formData.diet.waterIntake > 0 ||
           formData.weight ||
+          (formData.bodyComposition?.bodyFatPercentage && !isNaN(formData.bodyComposition.bodyFatPercentage)) ||
+          (formData.bodyComposition?.muscleMass && !isNaN(formData.bodyComposition.muscleMass)) ||
+          (formData.bodyComposition?.boneDensity && !isNaN(formData.bodyComposition.boneDensity)) ||
+          (formData.bloodPressure.systolic && !isNaN(formData.bloodPressure.systolic)) ||
+          (formData.bloodPressure.diastolic && !isNaN(formData.bloodPressure.diastolic)) ||
           formData.notes) {
         autoSave();
       }
     }, 2000);
 
     return () => clearTimeout(timer);
-  }, [formData.steps, formData.sleep, formData.diet, formData.mood, formData.energy, formData.weight, formData.notes]);
+  }, [formData.steps, formData.sleep, formData.diet, formData.mood, formData.energy, formData.weight, formData.bodyComposition, formData.bloodPressure, formData.notes]);
 
   const moodOptions = [
     { value: 'very_sad', label: '😢 Very Sad', color: 'text-red-500' },
@@ -461,6 +490,205 @@ const HealthLog = () => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
                     placeholder="Current weight"
                   />
+                </div>
+
+                {/* Body Composition */}
+                <div className="mb-6">
+                  <div className="flex items-center mb-3">
+                    <div className="h-5 w-5 bg-purple-500 rounded-lg mr-2"></div>
+                    <h3 className="text-lg font-medium text-gray-900">Body Composition</h3>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Body Fat (%)
+                      </label>
+                      <input
+                        type="number"
+                        min="3"
+                        max="50"
+                        step="0.1"
+                        value={formData.bodyComposition?.bodyFatPercentage || ''}
+                        onChange={(e) => handleInputChange('bodyComposition', 'bodyFatPercentage', e.target.value ? parseFloat(e.target.value) : '')}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        placeholder="10-25% typical"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Muscle Mass (kg)
+                      </label>
+                      <input
+                        type="number"
+                        min="10"
+                        max="200"
+                        step="0.1"
+                        value={formData.bodyComposition?.muscleMass || ''}
+                        onChange={(e) => handleInputChange('bodyComposition', 'muscleMass', e.target.value ? parseFloat(e.target.value) : '')}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        placeholder="25-50kg typical"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Bone Density (g/cm²)
+                      </label>
+                      <input
+                        type="number"
+                        min="0.5"
+                        max="2.0"
+                        step="0.01"
+                        value={formData.bodyComposition?.boneDensity || ''}
+                        onChange={(e) => handleInputChange('bodyComposition', 'boneDensity', e.target.value ? parseFloat(e.target.value) : '')}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        placeholder="1.0-1.4 normal"
+                      />
+                    </div>
+                  </div>
+                  
+                  {(formData.bodyComposition?.bodyFatPercentage || formData.bodyComposition?.muscleMass) && (
+                    <div className="mt-3 p-3 bg-purple-50 rounded-lg">
+                      <div className="text-sm text-gray-600 space-y-1">
+                        {formData.bodyComposition?.bodyFatPercentage && (
+                          <div>
+                            <span className="font-medium">Body Fat Assessment: </span>
+                            {parseFloat(formData.bodyComposition.bodyFatPercentage) < 10 ? '🏃‍♂️ Athletic' :
+                             parseFloat(formData.bodyComposition.bodyFatPercentage) < 20 ? '💪 Fit' :
+                             parseFloat(formData.bodyComposition.bodyFatPercentage) < 30 ? '👍 Average' : '⚠️ Above Average'}
+                          </div>
+                        )}
+                        {formData.bodyComposition?.muscleMass && (
+                          <div>
+                            <span className="font-medium">Muscle Mass: </span>
+                            {parseFloat(formData.bodyComposition.muscleMass) > 40 ? '💪 Excellent' :
+                             parseFloat(formData.bodyComposition.muscleMass) > 30 ? '👍 Good' :
+                             parseFloat(formData.bodyComposition.muscleMass) > 20 ? '📈 Average' : '⬆️ Below Average'}
+                          </div>
+                        )}
+                        {formData.bodyComposition?.boneDensity && (
+                          <div>
+                            <span className="font-medium">Bone Health: </span>
+                            {parseFloat(formData.bodyComposition?.boneDensity) > 1.2 ? '🦴 Excellent' :
+                             parseFloat(formData.bodyComposition?.boneDensity) > 1.0 ? '👍 Good' :
+                             parseFloat(formData.bodyComposition?.boneDensity) > 0.8 ? '⚠️ Fair' : '🚨 Low'}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Blood Pressure Tracking */}
+                <div className="mb-6">
+                  <div className="flex items-center mb-3">
+                    <div className="h-5 w-5 bg-blue-500 rounded-full mr-2"></div>
+                    <h3 className="text-lg font-medium text-gray-900">Blood Pressure</h3>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Systolic (mmHg)
+                      </label>
+                      <input
+                        type="number"
+                        min="70"
+                        max="250"
+                        value={formData.bloodPressure.systolic}
+                        onChange={(e) => handleInputChange('bloodPressure', 'systolic', e.target.value ? parseInt(e.target.value) : '')}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="120"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Diastolic (mmHg)
+                      </label>
+                      <input
+                        type="number"
+                        min="40"
+                        max="150"
+                        value={formData.bloodPressure.diastolic}
+                        onChange={(e) => handleInputChange('bloodPressure', 'diastolic', e.target.value ? parseInt(e.target.value) : '')}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="80"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Pulse (BPM)
+                      </label>
+                      <input
+                        type="number"
+                        min="30"
+                        max="200"
+                        value={formData.bloodPressure.pulse}
+                        onChange={(e) => handleInputChange('bloodPressure', 'pulse', parseInt(e.target.value) || '')}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="70"
+                      />
+                    </div>
+                  </div>
+                  
+                  {formData.bloodPressure.systolic && formData.bloodPressure.diastolic && (
+                    <div className="mt-3">
+                      {(() => {
+                        const systolic = parseInt(formData.bloodPressure.systolic);
+                        const diastolic = parseInt(formData.bloodPressure.diastolic);
+                        let category = 'normal';
+                        let color = 'green';
+                        let message = 'Normal blood pressure';
+                        
+                        if (systolic < 120 && diastolic < 80) {
+                          category = 'Optimal';
+                          color = 'green';
+                          message = 'Excellent blood pressure';
+                        } else if (systolic < 130 && diastolic < 85) {
+                          category = 'Normal';
+                          color = 'green';
+                          message = 'Good blood pressure';
+                        } else if (systolic < 140 && diastolic < 90) {
+                          category = 'High Normal';
+                          color = 'yellow';
+                          message = 'Monitor regularly';
+                        } else if (systolic < 160 && diastolic < 100) {
+                          category = 'Grade 1 Hypertension';
+                          color = 'orange';
+                          message = 'Consult healthcare provider';
+                        } else if (systolic < 180 && diastolic < 110) {
+                          category = 'Grade 2 Hypertension';
+                          color = 'red';
+                          message = 'Requires medical attention';
+                        } else {
+                          category = 'Grade 3 Hypertension';
+                          color = 'red';
+                          message = 'Seek immediate medical care';
+                        }
+                        
+                        return (
+                          <div className={`p-3 rounded-lg bg-${color}-50 border border-${color}-200`}>
+                            <div className={`font-medium text-${color}-800`}>{category}</div>
+                            <div className={`text-${color}-700 text-sm`}>{message}</div>
+                            <div className="text-gray-600 text-sm mt-1">
+                              Reading: {systolic}/{diastolic} mmHg
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  )}
+                  
+                  <div className="mt-3">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      BP Notes (Optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.bloodPressure.notes}
+                      onChange={(e) => handleInputChange('bloodPressure', 'notes', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Time taken, arm used, position, etc."
+                    />
+                  </div>
                 </div>
 
                 {/* Notes */}

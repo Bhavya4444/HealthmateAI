@@ -88,6 +88,50 @@ const Dashboard = () => {
       icon: HeartIcon,
       color: 'text-green-600',
       bgColor: 'bg-green-50'
+    },
+    {
+      name: 'Body Composition',
+      primary: {
+        label: 'Body Fat',
+        value: todayLog?.bodyComposition?.bodyFatPercentage || 0,
+        goal: 15,
+        unit: '%'
+      },
+      secondary: {
+        label: 'Muscle Mass',
+        value: todayLog?.bodyComposition?.muscleMass || 0,
+        unit: 'kg'
+      },
+      icon: ({ className }) => (
+        <div className={`rounded-lg ${className}`} 
+             style={{ width: '1.5rem', height: '1.5rem', backgroundColor: 'currentColor' }} />
+      ),
+      color: 'text-purple-600',
+      bgColor: 'bg-purple-50'
+    },
+    {
+      name: 'Blood Pressure',
+      primary: {
+        label: 'Systolic/Diastolic',
+        value: todayLog?.bloodPressure?.systolic && todayLog?.bloodPressure?.diastolic 
+          ? `${todayLog.bloodPressure.systolic}/${todayLog.bloodPressure.diastolic}` 
+          : 'Not recorded',
+        goal: '120/80',
+        unit: 'mmHg'
+      },
+      secondary: {
+        label: 'Category',
+        value: todayLog?.bloodPressure?.category 
+          ? todayLog.bloodPressure.category.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+          : 'Unknown',
+        unit: ''
+      },
+      icon: ({ className }) => (
+        <div className={`rounded-full ${className}`} 
+             style={{ width: '1.5rem', height: '1.5rem', backgroundColor: 'currentColor' }} />
+      ),
+      color: 'text-blue-600',
+      bgColor: 'bg-blue-50'
     }
     
   ];
@@ -98,30 +142,50 @@ const Dashboard = () => {
     let score = 0;
     let factors = 0;
 
-    // Steps score (25%)
+    // Steps score (20%)
     if (todayLog.steps?.count) {
-      score += Math.min(25, (todayLog.steps.count / todayLog.steps.goal) * 25);
-      factors += 25;
+      score += Math.min(20, (todayLog.steps.count / todayLog.steps.goal) * 20);
+      factors += 20;
     }
 
-    // Sleep score (25%)
+    // Sleep score (20%)
     if (todayLog.sleep?.duration) {
-      const sleepScore = todayLog.sleep.duration >= 7 && todayLog.sleep.duration <= 9 ? 25 :
-                       todayLog.sleep.duration >= 6 && todayLog.sleep.duration <= 10 ? 20 : 15;
+      const sleepScore = todayLog.sleep.duration >= 7 && todayLog.sleep.duration <= 9 ? 20 :
+                       todayLog.sleep.duration >= 6 && todayLog.sleep.duration <= 10 ? 15 : 10;
       score += sleepScore;
-      factors += 25;
+      factors += 20;
     }
 
-    // Energy score (25%)
+    // Energy score (20%)
     if (todayLog.energy) {
-      score += (todayLog.energy / 10) * 25;
-      factors += 25;
+      score += (todayLog.energy / 10) * 20;
+      factors += 20;
     }
 
-    // Exercise score (25%)
+    // Exercise score (20%)
     if (todayLog.exercise?.length > 0) {
-      score += 25;
-      factors += 25;
+      score += 20;
+      factors += 20;
+    }
+
+    // Body Composition score (10%)
+    if (todayLog.bodyComposition?.bodyFatPercentage) {
+      const bodyFat = todayLog.bodyComposition.bodyFatPercentage;
+      const bfScore = bodyFat <= 15 ? 10 :
+                     bodyFat <= 20 ? 8 :
+                     bodyFat <= 25 ? 6 : 4;
+      score += bfScore;
+      factors += 10;
+    }
+
+    // Blood Pressure score (10%)
+    if (todayLog.bloodPressure?.systolic && todayLog.bloodPressure?.diastolic) {
+      const category = todayLog.bloodPressure.category;
+      const bpScore = category === 'optimal' ? 10 :
+                     category === 'normal' ? 8 :
+                     category === 'high_normal' ? 6 : 4;
+      score += bpScore;
+      factors += 10;
     }
 
     return factors > 0 ? Math.round((score / factors) * 100) : 0;
@@ -211,7 +275,7 @@ const Dashboard = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2, duration: 0.6 }}
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8"
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-8"
         >
           {quickStats.map((stat, index) => (
             <div key={stat.name} className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">

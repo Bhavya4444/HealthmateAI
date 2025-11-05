@@ -138,6 +138,95 @@ const healthLogSchema = new mongoose.Schema({
     type: Number,
     min: 0
   },
+  bodyComposition: {
+    bodyFatPercentage: {
+      type: Number,
+      min: 3,
+      max: 50,
+      validate: {
+        validator: function(v) {
+          return v == null || (v >= 3 && v <= 50);
+        },
+        message: 'Body fat percentage should be between 3-50%'
+      }
+    },
+    muscleMass: {
+      type: Number,
+      min: 10,
+      max: 200,
+      validate: {
+        validator: function(v) {
+          return v == null || (v >= 10 && v <= 200);
+        },
+        message: 'Muscle mass should be between 10-200 kg'
+      }
+    },
+    boneDensity: {
+      type: Number,
+      min: 0.5,
+      max: 2.0,
+      validate: {
+        validator: function(v) {
+          return v == null || (v >= 0.5 && v <= 2.0);
+        },
+        message: 'Bone density should be between 0.5-2.0 g/cm²'
+      }
+    },
+    bmi: {
+      type: Number,
+      min: 10,
+      max: 50
+    },
+    fitnessLevel: {
+      type: String,
+      enum: ['poor', 'fair', 'average', 'good', 'excellent'],
+      default: 'average'
+    },
+    measurementTime: {
+      type: Date,
+      default: Date.now
+    },
+    notes: String
+  },
+  bloodPressure: {
+    systolic: {
+      type: Number,
+      min: 70,
+      max: 250,
+      validate: {
+        validator: function(v) {
+          return v == null || (v >= 70 && v <= 250);
+        },
+        message: 'Systolic pressure should be between 70-250 mmHg'
+      }
+    },
+    diastolic: {
+      type: Number,
+      min: 40,
+      max: 150,
+      validate: {
+        validator: function(v) {
+          return v == null || (v >= 40 && v <= 150);
+        },
+        message: 'Diastolic pressure should be between 40-150 mmHg'
+      }
+    },
+    pulse: {
+      type: Number,
+      min: 30,
+      max: 200
+    },
+    category: {
+      type: String,
+      enum: ['optimal', 'normal', 'high_normal', 'grade1_hypertension', 'grade2_hypertension', 'grade3_hypertension', 'isolated_systolic'],
+      default: 'normal'
+    },
+    measurementTime: {
+      type: Date,
+      default: Date.now
+    },
+    notes: String
+  },
   notes: String,
   calorieBalance: {
     type: Number, // totalCalories - totalCaloriesBurned
@@ -177,6 +266,30 @@ healthLogSchema.pre('save', function(next) {
   const totalBurned = (this.steps?.caloriesBurned || 0) + (this.exercise?.totalCaloriesBurned || 0);
   this.calorieBalance = totalIntake - totalBurned;
 
+  // Calculate BMI and fitness level from body composition if we have user data
+  if (this.bodyComposition && this.populated('userId') && this.userId.height && this.weight) {
+    const heightInMeters = this.userId.height / 100;
+    this.bodyComposition.bmi = this.weight / (heightInMeters * heightInMeters);
+    
+    // Calculate fitness level based on body composition
+    if (this.bodyComposition.bodyFatPercentage && this.bodyComposition.muscleMass) {
+      this.bodyComposition.fitnessLevel = this.constructor.calculateFitnessLevel(
+        this.bodyComposition.bodyFatPercentage,
+        this.bodyComposition.muscleMass,
+        this.userId.gender,
+        this.userId.age
+      );
+    }
+  }
+
+  // Categorize blood pressure reading
+  if (this.bloodPressure && this.bloodPressure.systolic && this.bloodPressure.diastolic) {
+    this.bloodPressure.category = this.constructor.categorizeBloodPressure(
+      this.bloodPressure.systolic, 
+      this.bloodPressure.diastolic
+    );
+  }
+
   next();
 });
 
@@ -203,6 +316,83 @@ healthLogSchema.statics.calculateCaloriesBurned = function(exerciseType, duratio
   const weightMultiplier = weight / 70; // Adjust for user's weight
 
   return Math.round(baseCalories * duration * weightMultiplier);
+};
+
+// Static method to calculate fitness level based on body composition
+healthLogSchema.statics.calculateFitnessLevel = function(bodyFatPercentage, muscleMass, gender, age) {
+  let score = 0;
+  
+  // Body fat scoring (gender and age specific)
+  if (gender === 'male') {
+    if (age < 30) {
+      score += bodyFatPercentage < 14 ? 5 : bodyFatPercentage < 18 ? 4 : bodyFatPercentage < 25 ? 3 : 2;
+    } else if (age < 50) {
+      score += bodyFatPercentage < 17 ? 5 : bodyFatPercentage < 21 ? 4 : bodyFatPercentage < 28 ? 3 : 2;
+    } else {
+      score += bodyFatPercentage < 20 ? 5 : bodyFatPercentage < 25 ? 4 : bodyFatPercentage < 30 ? 3 : 2;
+    }
+  } else {
+    if (age < 30) {
+      score += bodyFatPercentage < 21 ? 5 : bodyFatPercentage < 25 ? 4 : bodyFatPercentage < 32 ? 3 : 2;
+    } else if (age < 50) {
+      score += bodyFatPercentage < 24 ? 5 : bodyFatPercentage < 28 ? 4 : bodyFatPercentage < 35 ? 3 : 2;
+    } else {
+      score += bodyFatPercentage < 27 ? 5 : bodyFatPercentage < 31 ? 4 : bodyFatPercentage < 38 ? 3 : 2;
+    }
+  }
+  
+  // Muscle mass scoring (relative to body weight approximation)
+  const avgMuscleMass = gender === 'male' ? 35 : 28;
+  score += muscleMass > avgMuscleMass * 1.2 ? 5 : 
+           muscleMass > avgMuscleMass ? 4 : 
+           muscleMass > avgMuscleMass * 0.8 ? 3 : 2;
+  
+  // Convert to fitness level
+  const totalScore = score / 2; // Average of both metrics
+  if (totalScore >= 4.5) return 'excellent';
+  if (totalScore >= 3.5) return 'good';
+  if (totalScore >= 2.5) return 'average';
+  if (totalScore >= 1.5) return 'fair';
+  return 'poor';
+};
+
+// Static method to categorize blood pressure readings
+healthLogSchema.statics.categorizeBloodPressure = function(systolic, diastolic) {
+  if (!systolic || !diastolic) return 'normal';
+  
+  // Based on ESC/ESH Guidelines
+  if (systolic < 120 && diastolic < 80) {
+    return 'optimal';
+  } else if (systolic < 130 && diastolic < 85) {
+    return 'normal';
+  } else if (systolic < 140 && diastolic < 90) {
+    return 'high_normal';
+  } else if (systolic < 160 && diastolic < 100) {
+    return 'grade1_hypertension';
+  } else if (systolic < 180 && diastolic < 110) {
+    return 'grade2_hypertension';
+  } else if (systolic >= 180 || diastolic >= 110) {
+    return 'grade3_hypertension';
+  } else if (systolic >= 140 && diastolic < 90) {
+    return 'isolated_systolic';
+  }
+  
+  return 'normal';
+};
+
+// Method to get blood pressure interpretation
+healthLogSchema.statics.getBloodPressureInterpretation = function(category) {
+  const interpretations = {
+    optimal: { label: 'Optimal', color: 'green', description: 'Excellent blood pressure' },
+    normal: { label: 'Normal', color: 'green', description: 'Good blood pressure' },
+    high_normal: { label: 'High Normal', color: 'yellow', description: 'Monitor regularly' },
+    grade1_hypertension: { label: 'Grade 1 Hypertension', color: 'orange', description: 'Consult healthcare provider' },
+    grade2_hypertension: { label: 'Grade 2 Hypertension', color: 'red', description: 'Requires medical attention' },
+    grade3_hypertension: { label: 'Grade 3 Hypertension', color: 'red', description: 'Seek immediate medical care' },
+    isolated_systolic: { label: 'Isolated Systolic Hypertension', color: 'orange', description: 'Consult healthcare provider' }
+  };
+  
+  return interpretations[category] || interpretations.normal;
 };
 
 // Index for efficient querying

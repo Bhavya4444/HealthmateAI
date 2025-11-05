@@ -1,10 +1,14 @@
 const dotenv = require('dotenv');
-dotenv.config();
+const path = require('path');
+dotenv.config({ path: path.join(__dirname, '../.env') });
+
+// Debug environment variables
+console.log('🔧 JWT_SECRET configured:', process.env.JWT_SECRET ? 'Yes' : 'No');
+console.log('🔧 MONGODB_URI:', process.env.MONGODB_URI);
 
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-const path = require('path');
 
 // Import routes
 const authRoutes = require('./routes/auth');
@@ -45,7 +49,7 @@ const PORT = process.env.PORT || 5001; // Changed from 5000 to 5001 to avoid mac
 const server = app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📊 MongoDB: ${process.env.MONGODB_URI || 'mongodb://localhost:27017/healthmate'}`);
-  console.log(`🤖 OpenAI: ${process.env.OPENAI_API_KEY ? 'Configured' : 'Not configured'}`);
+  console.log(`🤖 OpenRouter: ${process.env.OPENROUTER_API_KEY ? 'Configured' : 'Not configured'}`);
 }).on('error', (err) => {
   if (err.code === 'EADDRINUSE') {
     console.error(`❌ Port ${PORT} is already in use.`);
