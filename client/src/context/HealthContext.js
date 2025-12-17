@@ -20,7 +20,7 @@ export const HealthProvider = ({ children }) => {
   const getTodayLog = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('/api/health/today');
+      const response = await axios.get(`${process.env.REACT_APP_API_BASE_URL}/api/health/today`);
       setTodayLog(response.data);
       return response.data;
     } catch (error) {
@@ -33,7 +33,7 @@ export const HealthProvider = ({ children }) => {
 
   const updateHealthLog = async (data) => {
     try {
-      const response = await axios.post('/api/health/log', {
+      const response = await axios.post(`${process.env.REACT_APP_API_BASE_URL}/api/health/log`, {
         date: new Date().toISOString(),
         ...data
       });
@@ -48,7 +48,7 @@ export const HealthProvider = ({ children }) => {
 
   const addMeal = async (meal) => {
     try {
-      const response = await axios.post('/api/health/meal', { meal });
+      const response = await axios.post(`${process.env.REACT_APP_API_BASE_URL}/api/health/meal`, { meal });
       setTodayLog(response.data.log);
       return { success: true };
     } catch (error) {
@@ -60,7 +60,7 @@ export const HealthProvider = ({ children }) => {
 
   const getAnalytics = async (days = 7) => {
     try {
-      const response = await axios.get(`/api/health/analytics?days=${days}`);
+      const response = await axios.get(`${process.env.REACT_APP_API_BASE_URL}/api/health/analytics?days=${days}`);
       setAnalytics(response.data);
       return response.data;
     } catch (error) {
@@ -71,7 +71,7 @@ export const HealthProvider = ({ children }) => {
 
   const getCalorieBalance = async (days = 7) => {
     try {
-      const response = await axios.get(`/api/health/calorie-balance?days=${days}`);
+      const response = await axios.get(`${process.env.REACT_APP_API_BASE_URL}/api/health/calorie-balance?days=${days}`);
       return response.data;
     } catch (error) {
       console.error('Error fetching calorie balance:', error);
@@ -87,7 +87,7 @@ export const HealthProvider = ({ children }) => {
       if (endDate) params.append('endDate', endDate);
       params.append('limit', limit);
 
-      const response = await axios.get(`/api/health/logs?${params}`);
+      const response = await axios.get(`${process.env.REACT_APP_API_BASE_URL}/api/health/logs?${params}`);
       return response.data;
     } catch (error) {
       console.error('Error fetching health logs:', error);
