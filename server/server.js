@@ -18,7 +18,13 @@ const aiRoutes = require('./routes/ai');
 const app = express();
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: [
+    'https://healthmateai-frontend.onrender.com', // your deployed frontend
+    'http://localhost:3000' // for local development, optional
+  ],
+  credentials: true
+}));
 app.use(express.json());
 
 // Connect to MongoDB
