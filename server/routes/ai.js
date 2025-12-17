@@ -20,7 +20,7 @@ async function callOpenRouter(messages, max_tokens = 500, temperature = 0.7) {
       {
         headers: {
           'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
-          'HTTP-Referer': 'http://localhost:3000',
+          'HTTP-Referer': 'https://healthmateai-frontend.onrender.com',
           'X-Title': 'HealthMate',
           'Content-Type': 'application/json'
         }
